@@ -1,0 +1,199 @@
+#include "mylib.h"
+GPIO_InitTypeDef GPIO_InitStructure;
+
+#define			GPIO_DHT11_CLK			RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+#define			GPIO_DHT11_PORT			GPIOA						
+#define			GPIO_DHT11_PIN			GPIO_Pin_8 
+
+/********************************* DHT11 define huong vao ra**************************************/
+#define			DHT11_DOUT_0			GPIO_WriteBit(GPIO_DHT11_PORT,GPIO_DHT11_PIN,Bit_RESET)
+#define 		DHT11_DOUT_1			GPIO_WriteBit(GPIO_DHT11_PORT,GPIO_DHT11_PIN,Bit_SET)
+#define 		DHT11_DATA_IN()		GPIO_ReadInputDataBit(GPIO_DHT11_PORT,GPIO_DHT11_PIN)
+	
+void init_GPIO(void);
+void ReceviceData(void);
+void Checkled(void);
+void nhankitu(char *s);
+uint8_t T_byte1, T_byte2, RH_byte1, RH_byte2, CheckSum ;
+uint8_t data = 0,dht,check,dht11=0;
+char esp[50];
+
+void SysTick_Handler()
+{
+	TimingDelay_Decrement();
+}
+
+void nhankitu(char *s)
+{
+	while(((*s)=USART3_GetCharwhile()) != 46) s++;
+	*s = 0;
+}
+void GPIO_DHT11_OUT(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct ;
+	
+// cho phep port
+	GPIO_DHT11_CLK;
+	
+	GPIO_InitStruct.GPIO_Pin = GPIO_DHT11_PIN ; 
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT ; //res pull
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz  ;
+	GPIO_Init( GPIO_DHT11_PORT , &GPIO_InitStruct ) ;	
+}
+
+/********************************config GPIO input***************************/
+void GPIO_DHT11_IN(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct ;
+	GPIO_InitStruct.GPIO_Pin	= GPIO_DHT11_PIN ; 
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN ;//mode input
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz  ;
+	GPIO_Init( GPIO_DHT11_PORT	, &GPIO_InitStruct ) ;
+}
+
+void init_GPIO()
+{
+
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+  
+  GPIO_InitStructure.GPIO_Pin = Led1|Led2|Led3|Led4|Buzzer;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(PORTLed, &GPIO_InitStructure);
+	
+	GPIO_InitStructure.GPIO_Pin = CB1|CB2|CB3|CB4;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(PORTCB, &GPIO_InitStructure);
+}
+
+void ReceviceData()
+{
+	data = USART3_GetChar();
+	switch(data)
+	{
+		case 0x01:{dht11=0;GPIO_ResetBits(PORTLed,Led1); check = 1; break; }
+		case 0x11:{dht11=0;GPIO_SetBits(PORTLed,Led1);check = 1; break; }
+		case 0x02:{dht11=0;GPIO_ResetBits(PORTLed,Led2);check = 1; break; }
+		case 0x12:{dht11=0;GPIO_SetBits(PORTLed,Led2);check = 1; break; }
+		case 0x03:{dht11=0;GPIO_ResetBits(PORTLed,Led3);check = 1; break; }
+		case 0x13:{dht11=0;GPIO_SetBits(PORTLed,Led3); check = 1;break; }
+		case 0x04:{dht11=0;GPIO_ResetBits(PORTLed,Led4);check = 1; break; }
+		case 0x14:{dht11=0;GPIO_SetBits(PORTLed,Led4);check = 1; break; }
+		case 0x98:{dht11=0;GPIO_ResetBits(PORTLed,Buzzer);check = 1; break; }
+		case 0x99:{dht11=0;GPIO_SetBits(PORTLed,Buzzer);check = 1; break; }
+		//case 0x88:{dht11=1;nhankitu(esp);myprintf2("%s",esp); break;}
+		default: break;
+//		default: {GPIO_ResetBits(PORTLed,Buzzer); 
+//							GPIO_ResetBits(PORTLed,Led1);
+//							GPIO_ResetBits(PORTLed,Led2);
+//							GPIO_ResetBits(PORTLed,Led3);
+//							GPIO_ResetBits(PORTLed,Led4);
+//							break;}
+	}
+}
+////////////////////////////////////////////////////////
+void Checkled()
+{
+	if (GPIO_ReadInputDataBit(PORTCB,CB1)==1)
+		myprintf3("den1.val=1ÿÿÿ");
+	else
+		myprintf3("den1.val=0ÿÿÿ");
+	if (GPIO_ReadInputDataBit(PORTCB,CB2)==1)
+		myprintf3("den2.val=1ÿÿÿ");
+	else
+		myprintf3("den2.val=0ÿÿÿ");
+	if (GPIO_ReadInputDataBit(PORTCB,CB3)==1)
+		myprintf3("den3.val=1ÿÿÿ");
+	else
+		myprintf3("den3.val=0ÿÿÿ");
+	if (GPIO_ReadInputDataBit(PORTCB,CB4)==1)
+		myprintf3("den4.val=1ÿÿÿ");
+	else
+		myprintf3("den4.val=0ÿÿÿ");
+	
+}
+void batdau_dht()
+{
+  GPIO_DHT11_OUT();       //chon chan la ngo ra       
+  DHT11_DOUT_0 ;                 //keo tin heu xuong muc 0
+  delay_ms(18);   
+	DHT11_DOUT_1; 					// data o muc 1
+	delay_us(20);
+  GPIO_DHT11_IN();       //thanh ngo vao
+}
+short kiemtra_hoitiep()
+{
+  //delay_us(40);                 // sau 40us ktra co keo xuong thap hay khong
+  while(DHT11_DATA_IN());	
+	while(!DHT11_DATA_IN());	
+	while(DHT11_DATA_IN());	
+}
+uint8_t read_data (void)
+{
+	uint8_t i = 0,j;
+	for (j=0;j<8;j++)
+	{
+		//k = 0;
+		while (!DHT11_DATA_IN()) ; // bang 1
+		delay_us (30);   // wait for 30 us
+		if (!DHT11_DATA_IN())   // if the pin is low 
+		{
+			i&= ~(1<<(7-j));   // write 0
+		}
+		else 
+		{i|= (1<<(7-j));}  // if the pin is high, write 1
+		while (DHT11_DATA_IN()); // wait for the pin to go low
+	}
+	return i;
+}
+
+int main()
+	{
+	
+	CLOCK_SetClockTo168MHz();
+	SystemCoreClockUpdate();                      /* Get Core Clock Frequency   */
+  if (SysTick_Config(SystemCoreClock / 1000)) { /* SysTick 1 msec interrupts  */
+    while (1);                                  /* Capture error              */
+  }
+	Init_timer2();
+	Init_timer3();
+	init_GPIO();
+	USART2_Config();	
+	USART3_Config();	
+	while(1)
+		{
+			ReceviceData();
+			if(check == 1)
+			{
+				Checkled();
+				check = 0;
+			}
+			if (dht > 2)
+				{
+					dht = 0;
+					batdau_dht();                                   
+					kiemtra_hoitiep(); 
+					RH_byte1 = read_data();                
+					RH_byte2 = read_data();                 
+					T_byte1 = read_data();                  
+					T_byte2 = read_data();                  
+					CheckSum = read_data();                                                         
+					if(CheckSum == (RH_byte1 + RH_byte2 + T_byte1 + T_byte2))
+						{
+							if(dht11==0)
+								myprintf2("%d,%d",RH_byte1,T_byte1);
+							myprintf3("doam.val=%dÿÿÿ",RH_byte1);
+							myprintf3("nhietdo.val=%dÿÿÿ",T_byte1);
+						}
+					}
+				}
+			}
+	
